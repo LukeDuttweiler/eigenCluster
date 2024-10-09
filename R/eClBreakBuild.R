@@ -149,24 +149,31 @@ eCl.breakBuild <- function(A,
     #Get new L
     L.cl <- eVec.cl %*% diag(sqrt(eVal.cl))
 
-      #whichL <- apply(abs(L.cl), 1, which.max) #Which L is each obs in cluster cl assocaiated with?
-      L2 <- L.cl[,2]
-      split <- sign(L2)
+    #Get second largest vector
+    L2 <- L.cl[,2]
+    split <- sign(L2)
+
+    #Split if absolute mean of both sides is greater than .5.
+    if(mean(abs(L2[split == 1])) > .5 & mean(abs(L2[split == -1])) > .5){
+      split <- split
+    }else{
+      split <- rep(1, length(L2))
+    }
 
       #Evaluate possible split using a version of Frobenius norm if there is an option
       if(!all(diff(split) == 0)){
-        op1 <- matrix(1, nrow(A.cl), ncol(A.cl)) #binary matrix for all values in cluster
-        op2 <- outer(split, split, FUN = '==') + 0 #binary matrix splitting cluster across sign of L2
+        #op1 <- matrix(1, nrow(A.cl), ncol(A.cl)) #binary matrix for all values in cluster
+        #op2 <- outer(split, split, FUN = '==') + 0 #binary matrix splitting cluster across sign of L2
 
-        norm1 <- sum((A.cl^2 - op1^2)^2)
-        norm2 <- sum((A.cl^2 - op2^2)^2)
+        #norm1 <- sum((A.cl^2 - op1^2)^2)
+        #norm2 <- sum((A.cl^2 - op2^2)^2)
 
         #Return whichever is best
-        if(norm1 <= norm2){
-          newClust <- rep(1, nrow(A.cl))
-        }else{
-          newClust <- (split + 3)/2
-        }
+        #if(norm1 <= norm2){
+        #  newClust <- rep(1, nrow(A.cl))
+        #}else{
+        newClust <- (split + 3)/2
+        #}
       }else{
         newClust <- rep(1, nrow(A.cl))
       }
@@ -222,8 +229,15 @@ eCl.breakBuild <- function(A,
     op2 <- (op2.1+op2.2)[cl1|cl2, cl1|cl2]
 
     #Calculate Norms
-    norm1 <- mean((A.cl^1 - op1^1)^2)
-    norm2 <- mean((A.cl^1 - op2^1)^2)
+    norm1 <- mean((A.cl - op1^1)^2)
+    norm2 <- mean((A.cl - op2^1)^2)
+    #norm1 <- criterion(as.dist(1/(1+A.cl*op1)), method = 'Path_Length')/(sum(op1))
+    #norm2 <- criterion(as.dist(1/(1+A.cl*op2)), method = 'Path_Length')/(sum(op2))
+    #norm1 <- -norm1
+    #norm2 <- -norm2
+    #norm1 <- .3
+    #norm2 <- min(A[cl1, cl2])
+    #stop()
 
     #If norm1 < norm2, merge p1 into p2, mark all p1 as checked, mark mustJoin as false
     if(norm1 < norm2){
