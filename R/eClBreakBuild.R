@@ -77,10 +77,16 @@ eCl.breakBuild <- function(A,
   #INITIAL BREAK
   ###############
 
-  #Eigendecomposition
-  eDec <- suppressWarnings(RSpectra::eigs_sym(A, k = maxK))
-  eVec <- eDec$vectors
-  eVal <- eDec$values
+  if(nrow(A) > maxK){
+    eDec <- Rfast::eigen.sym(A, k = min(maxK, nrow(A)))
+    eVec <- eDec$vectors
+    eVal <- eDec$values[,1]
+  }else{
+    eDec <- eigen(A, symmetric = TRUE)
+    eVec <- eDec$vectors
+    eVal <- eDec$values
+  }
+
   eVal <- pmax(eVal, rep(0, length(eVal)))
 
   #Get L
@@ -88,43 +94,84 @@ eCl.breakBuild <- function(A,
 
   #Get clustering
   clust <- apply(abs(L), 1, which.max)
+  clust <- as.character(clust)
 
   ############
   #SUB-BREAK 1
   ############
   allClust <- unique(clust)
+  done <- rep(FALSE, length(allClust))
+  t <- 1
 
-  #Now, for each cluster split based on eigendecomp of principal submatrix
-  subClusts <- lapply(allClust, function(cl){
-
+  #Now, for each cluster split based on eigendecomp of principal submatrix until no longer works
+  while(!all(done)){
+    cl <- allClust[t]
     #Get cluster specific A
     A.cl <- A[clust == cl, clust == cl, drop = F]
 
     #As long as cluster isn't singleton, try to break down
-    if(nrow(A.cl) > 2){
-      #Eigendecomposition for cluster
-      eDec.cl <- suppressWarnings(RSpectra::eigs_sym(A.cl, k = min(maxK, nrow(A.cl))))
-      eVec.cl <- eDec.cl$vectors
-      eVal.cl <- eDec.cl$values
-      eVal.cl <- pmax(eVal.cl, rep(0, length(eVal.cl)))
+    if(nrow(A.cl) > 1){
+      if(nrow(A.cl) > maxK){
+        eDec.cl <- Rfast::eigen.sym(A.cl, k = min(maxK, nrow(A.cl)))
+        eVec.cl <- eDec.cl$vectors
+        eVal.cl <- eDec.cl$values[,1]
+      }else{
+        eDec.cl <- eigen(A.cl, symmetric = TRUE)
+        eVec.cl <- eDec.cl$vectors
+        eVal.cl <- eDec.cl$values
+      }
 
-      #Get new L
+      eVal.cl <- pmax(eVal.cl, rep(0, length(eVal.cl)))
       L.cl <- eVec.cl %*% diag(sqrt(eVal.cl))
+
       whichL <- apply(abs(L.cl), 1, which.max) #Which L is each obs in cluster cl assocaiated with?
       newClust <- whichL
     }else{
       newClust <- rep(1, nrow(A.cl))
     }
 
-    return(newClust)
-  })
+    clust[clust == cl] <- as.character(interaction(cl, newClust))
 
-  clust2 <- clust
-  for(i in 1:length(allClust)){
-    clust2[clust == allClust[i]] <- subClusts[[i]]
+    #Check to see if done
+    if(!all(newClust == 1)){
+      allClust <- c(allClust, unique(as.character(interaction(cl, newClust))))
+      done <- c(done, rep(FALSE, length(unique(newClust))))
+    }
+
+    done[t] <- TRUE
+    t <- t+1
   }
 
-  clust <- interaction(clust, clust2)
+  #subClusts <- lapply(allClust, function(cl){
+
+    #Get cluster specific A
+  #  A.cl <- A[clust == cl, clust == cl, drop = F]
+
+    #As long as cluster isn't singleton, try to break down
+  #  if(nrow(A.cl) > 2){
+      #Eigendecomposition for cluster
+      #eDec.cl <- suppressWarnings(RSpectra::eigs_sym(A.cl, k = min(maxK, nrow(A.cl))))
+      #eVec.cl <- eDec.cl$vectors
+      #eVal.cl <- eDec.cl$values
+      #eVal.cl <- pmax(eVal.cl, rep(0, length(eVal.cl)))
+
+      #Get new L
+      #L.cl <- eVec.cl %*% diag(sqrt(eVal.cl))
+      #whichL <- apply(abs(L.cl), 1, which.max) #Which L is each obs in cluster cl assocaiated with?
+      #newClust <- whichL
+    #}else{
+    #  newClust <- rep(1, nrow(A.cl))
+    #}
+
+    #return(newClust)
+  #})
+
+  #clust2 <- clust
+  #for(i in 1:length(allClust)){
+  #  clust2[clust == allClust[i]] <- subClusts[[i]]
+  #}
+
+  #clust <- interaction(clust, clust2)
 
   #############
   #SUB-BREAK 2
@@ -138,42 +185,35 @@ eCl.breakBuild <- function(A,
     A.cl <- A[clust == cl, clust == cl, drop = F]
 
     #As long as cluster isn't singleton or double, try to break down
-    if(nrow(A.cl) > 2){
+    if(nrow(A.cl) > 1){
 
-    #Eigendecomposition for cluster
-    eDec.cl <- suppressWarnings(RSpectra::eigs_sym(A.cl, k = min(maxK, nrow(A.cl))))
-    eVec.cl <- eDec.cl$vectors
-    eVal.cl <- eDec.cl$values
-    eVal.cl <- pmax(eVal.cl, rep(0, length(eVal.cl)))
-
-    #Get new L
-    L.cl <- eVec.cl %*% diag(sqrt(eVal.cl))
+      if(nrow(A.cl) > maxK){
+        eDec.cl <- Rfast::eigen.sym(A.cl, k = min(maxK, nrow(A.cl)))
+        eVec.cl <- eDec.cl$vectors
+        eVal.cl <- eDec.cl$values[,1]
+      }else{
+        eDec.cl <- eigen(A.cl, symmetric = TRUE)
+        eVec.cl <- eDec.cl$vectors
+        eVal.cl <- eDec.cl$values
+      }
+      eVal.cl <- pmax(eVal.cl, rep(0, length(eVal.cl)))
+      L.cl <- eVec.cl %*% diag(sqrt(eVal.cl))
 
     #Get second largest vector
     L2 <- L.cl[,2]
     split <- sign(L2)
 
-    #Split if absolute mean of both sides is greater than .5.
-    if(mean(abs(L2[split == 1])) > .5 & mean(abs(L2[split == -1])) > .5){
-      split <- split
-    }else{
-      split <- rep(1, length(L2))
-    }
-
       #Evaluate possible split using a version of Frobenius norm if there is an option
       if(!all(diff(split) == 0)){
-        #op1 <- matrix(1, nrow(A.cl), ncol(A.cl)) #binary matrix for all values in cluster
-        #op2 <- outer(split, split, FUN = '==') + 0 #binary matrix splitting cluster across sign of L2
 
-        #norm1 <- sum((A.cl^2 - op1^2)^2)
-        #norm2 <- sum((A.cl^2 - op2^2)^2)
+        #Split if absolute mean of both sides is greater than .5.
+        if(mean(abs(L2[split == 1])) > .5 & mean(abs(L2[split == -1])) > .5){
+          split <- split
+        }else{
+          split <- rep(-1, length(L2))
+        }
 
-        #Return whichever is best
-        #if(norm1 <= norm2){
-        #  newClust <- rep(1, nrow(A.cl))
-        #}else{
         newClust <- (split + 3)/2
-        #}
       }else{
         newClust <- rep(1, nrow(A.cl))
       }
@@ -191,19 +231,21 @@ eCl.breakBuild <- function(A,
 
   clust <- interaction(clust, clust2)
 
-  ##########
-  #BUILD
-  ##########
+
+  ###############
+  #BUILD - MAIN
+  ###############
   clust <- droplevels(clust) #Remove empty levels
-  allClust <- names(sort(table(clust))) #Get unique clusters sorted from smallest to largest
+  allClust <- names(sort(table(clust), decreasing = TRUE)) #Get unique clusters sorted from largest to smallest
 
   clustPairs <- combn(allClust, 2) #pairwise combinations of all clusters
   clustPairs <- clustPairs[,clustPairs[1,] != clustPairs[2,], drop = F] #No clusters trying to join to themselves
 
-  #Vectors to save info for build loop
-  mustJoin <- sort(table(clust)) < minSize
+  #Drop pairs which separated in step two above
+  pairsWithoutLast <- gsub('.[0-9]$', '', clustPairs)
+  clustPairs <- clustPairs[, pairsWithoutLast[1,] != pairsWithoutLast[2,], drop = F]
+
   #canJoin <- vector('logical', ncol(clustPairs))
-  joinNorm <- vector('numeric', ncol(clustPairs))
   checked <- vector('logical', ncol(clustPairs))
 
   #While loop for the building
@@ -220,27 +262,71 @@ eCl.breakBuild <- function(A,
     #Get joining A
     A.cl <- A[cl1|cl2, cl1|cl2, drop = F]
 
-    #Create option 1 (join the clusters)
-    op1 <- matrix(1, nrow(A.cl), ncol(A.cl))
+    #Calculate Overlap in 1st two dimensions
+    if(nrow(A.cl) > maxK){
+      eDec.cl <- Rfast::eigen.sym(A.cl, k = min(maxK, nrow(A.cl)))
+      eVec.cl <- eDec.cl$vectors
+      eVal.cl <- eDec.cl$values[,1]
+    }else{
+      eDec.cl <- eigen(A.cl, symmetric = TRUE)
+      eVec.cl <- eDec.cl$vectors
+      eVal.cl <- eDec.cl$values
+    }
+    eVal.cl <- pmax(eVal.cl, rep(0, length(eVal.cl)))
+    L.cl <- eVec.cl %*% diag(sqrt(eVal.cl))
+    L2 <- L.cl[,2]
+    split <- sign(L2)
 
-    #Create option 2 (keep clusters separate)
-    op2.1 <- outer(cl1, cl1)
-    op2.2 <- outer(cl2, cl2)
-    op2 <- (op2.1+op2.2)[cl1|cl2, cl1|cl2]
-
-    #Calculate Norms
-    norm1 <- mean((A.cl - op1^1)^2)
-    norm2 <- mean((A.cl - op2^1)^2)
-    #norm1 <- criterion(as.dist(1/(1+A.cl*op1)), method = 'Path_Length')/(sum(op1))
-    #norm2 <- criterion(as.dist(1/(1+A.cl*op2)), method = 'Path_Length')/(sum(op2))
-    #norm1 <- -norm1
-    #norm2 <- -norm2
-    #norm1 <- .3
-    #norm2 <- min(A[cl1, cl2])
-    #stop()
+    whichL <- apply(abs(L.cl), 1, which.max)
 
     #If norm1 < norm2, merge p1 into p2, mark all p1 as checked, mark mustJoin as false
-    if(norm1 < norm2){
+    if(all(whichL == 1) & (mean(L2[split == 1]) < .5) & (mean(L2[split == -1]) < .5) ){
+      clust[clust == p1] <- p2
+      checked[clustPairs[1,] == p1] <- TRUE
+    }else{#Otherwise, mark current iteration as checked and add norm1 to joinNorm
+      checked[p] <- TRUE
+    }
+
+    #Update changing parameters
+    clust <- droplevels(clust)
+    allClust <- names(sort(table(clust)))
+  }
+
+  ##########################
+  #BUILD - IF BELOW MINIMUM
+  ##########################
+  clust <- droplevels(clust) #Remove empty levels
+  allClust <- names(sort(table(clust))) #Get unique clusters sorted from smallest to largest
+
+  clustPairs <- combn(allClust, 2) #pairwise combinations of all clusters
+  clustPairs <- clustPairs[,clustPairs[1,] != clustPairs[2,], drop = F] #No clusters trying to join to themselves
+
+  #Vectors to save info for build loop
+  mustJoin <- sort(table(clust)) < minSize
+  #canJoin <- vector('logical', ncol(clustPairs))
+  joinNorm <- vector('numeric', ncol(clustPairs))
+  checked <- vector('logical', ncol(clustPairs))
+
+  #While loop for the building
+  while(any(mustJoin)){
+    #Identify which pair we're looking at
+    p <- which(!checked)[1]
+    p1 <- clustPairs[1,p]
+    p2 <- clustPairs[2,p]
+
+    #Get points in the two clusters
+    cl1 <- clust == p1
+    cl2 <- clust == p2
+
+    #Get joining A
+    A.cl <- A[cl1, cl2, drop = F]
+
+    #Calculate Norms
+    norm1 <- mean((A.cl - 1)^2)
+    norm2 <- mean((A.cl - 0)^2)
+
+    #If norm1 < norm2, merge p1 into p2, mark all p1 as checked, mark mustJoin as false
+    if(FALSE){#norm1 < norm2){
       clust[clust == p1] <- p2
       checked[clustPairs[1,] == p1] <- TRUE
       mustJoin[allClust == p1] <- FALSE
@@ -260,6 +346,7 @@ eCl.breakBuild <- function(A,
     allClust <- names(sort(table(clust)))
     mustJoin <- sort(table(clust)) < minSize
   }
+
 
   return(clust)
 }
