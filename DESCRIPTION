@@ -12,5 +12,6 @@ RoxygenNote: 7.3.1
 URL: https://github.com/LukeDuttweiler/eigenCluster
 BugReports: https://github.com/LukeDuttweiler/eigenCluster/issues
 Imports: 
+    igraph,
     RSpectra,
     utils

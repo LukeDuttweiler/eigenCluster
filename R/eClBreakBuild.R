@@ -203,6 +203,7 @@ eCl.breakBuild <- function(A,
     L2 <- L.cl[,2]
     split <- sign(L2)
 
+
       #Evaluate possible split using a version of Frobenius norm if there is an option
       if(!all(diff(split) == 0)){
 
@@ -231,12 +232,16 @@ eCl.breakBuild <- function(A,
 
   clust <- interaction(clust, clust2)
 
-
   ###############
   #BUILD - MAIN
   ###############
   clust <- droplevels(clust) #Remove empty levels
   allClust <- names(sort(table(clust), decreasing = TRUE)) #Get unique clusters sorted from largest to smallest
+
+  #Return if all are in the same cluster
+  if(length(allClust) == 1){
+    return(clust)
+  }
 
   clustPairs <- combn(allClust, 2) #pairwise combinations of all clusters
   clustPairs <- clustPairs[,clustPairs[1,] != clustPairs[2,], drop = F] #No clusters trying to join to themselves
@@ -280,7 +285,7 @@ eCl.breakBuild <- function(A,
     whichL <- apply(abs(L.cl), 1, which.max)
 
     #If norm1 < norm2, merge p1 into p2, mark all p1 as checked, mark mustJoin as false
-    if(all(whichL == 1) & (mean(L2[split == 1]) < .5) & (mean(L2[split == -1]) < .5) ){
+    if(all(whichL == 1) & (mean(L2[split == 1|split == 0]) < .5) & (mean(L2[split == -1 | split == 0]) < .5) ){
       clust[clust == p1] <- p2
       checked[clustPairs[1,] == p1] <- TRUE
     }else{#Otherwise, mark current iteration as checked and add norm1 to joinNorm

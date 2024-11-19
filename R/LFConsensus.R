@@ -72,9 +72,9 @@ lf.oneIter <- function(adjMat,
                        threshold,
                        alg,
                        ...){
-  adjGraph <- graph_from_adjacency_matrix(adjMat, mode = 'undirected', weighted = TRUE, diag = F)
+  adjGraph <- igraph::graph_from_adjacency_matrix(adjMat, mode = 'undirected', weighted = TRUE, diag = F)
 
-  clustAlg <- eval(parse(text = paste0('cluster_', alg)))
+  clustAlg <- eval(parse(text = paste0('igraph::cluster_', alg)))
 
   partitions <- lapply(1:np, function(i){
     origClust <- clustAlg(adjGraph, ...)$membership
