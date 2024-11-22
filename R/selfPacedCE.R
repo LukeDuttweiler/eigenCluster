@@ -95,7 +95,8 @@ selfPaced <- function(SList, K, threshold = .5){
       }
     }
   }
-  eigS <- eigen(S, symmetric = TRUE)
-  clust <- sapply(1:n, function(i){which.max(abs(eigS$vectors[,i]))})
-  return(clust)
+  S <- (S != 0) + 0
+
+  g <- igraph::graph_from_adjacency_matrix(S)
+  return(igraph::components(g))
 }
