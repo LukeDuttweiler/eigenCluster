@@ -7,7 +7,7 @@
 lf.consensus(
   adjMat,
   np = 20,
-  threshold = 0.2,
+  threshold = 0.5,
   alg = "louvain",
   maxIter = 100,
   ...

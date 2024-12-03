@@ -6,7 +6,8 @@
 #' @param SList A list of `n x n` co-association matrices, each representing a base clustering.
 #'              Each matrix contains values between 0 and 1 indicating the co-occurrence likelihood of samples.
 #' @param K An integer specifying the number of clusters to form.
-#' @param threshold A numeric hyperparameter value (default = 0.5) controlling the sparsity of the output. Larger values enforce stricter sparsity.
+#' @param threshold A numeric hyperparameter value (default = 0.1) controlling sparsity internal to the algorithm. We have noticed issues with algorithmic convergence when this value is set too high. If the algorithm is taking super long, try lowering the threshold.
+#'
 #'
 #' @return A vector of cluster assignments for each sample, with length equal to the number of rows (samples) in the input matrices.
 #'         Each element is an integer from 1 to `K`, indicating the cluster assignment of the corresponding sample.
@@ -15,7 +16,7 @@
 #' @references Zhou, X., Fu, Y., Liang, Z., & Wu, F. (2020). Self-Paced Clustering Ensemble. *IEEE Transactions on Knowledge and Data Engineering*.
 #'
 #' @export
-selfPaced <- function(SList, K, threshold = .5){
+selfPaced <- function(SList, K, threshold = .1){
   #number of clusterings
   m <- length(SList)
   #number of samples
@@ -59,7 +60,6 @@ selfPaced <- function(SList, K, threshold = .5){
       }
 
       #Calculate C
-      pq <- expand.grid(1:n, 1:n)
       yNorms <- as.matrix(dist(Y, diag = TRUE))^2
       Sweight <- Reduce('+', mapply(`/`, SList, alpha, SIMPLIFY = FALSE))
       C <- (Sweight - (rho*yNorms/(2*W)))/sum(1/alpha)
@@ -98,5 +98,5 @@ selfPaced <- function(SList, K, threshold = .5){
   S <- (S != 0) + 0
 
   g <- igraph::graph_from_adjacency_matrix(S)
-  return(igraph::components(g))
+  return(igraph::components(g)$membership)
 }

@@ -21,7 +21,7 @@
 #' @export
 lf.consensus <- function(adjMat,
                          np = 20,
-                         threshold = .2,
+                         threshold = .5,
                          alg = 'louvain',
                          maxIter = 100,
                          ...){
@@ -43,7 +43,21 @@ lf.consensus <- function(adjMat,
     if(all(adjMat == 1| adjMat == 0)){
       complete <- TRUE
     }else{
+      #Save info for isolated points
+      adjMatIso <- adjMat
+
+      #Threshold out
       adjMat[adjMat < threshold] <- 0
+
+      #If anything is isolated, fix that
+      isolated <- which(rowSums(adjMat) == 1)
+
+      for(i in isolated){
+        #identify which is closest
+        k <- which.max(adjMatIso[i,-i])
+        adjMat[i,k] <- adjMatIso[i,k]
+        adjMat[k,i] <- adjMatIso[k,i]
+      }
       t <- t+1
     }
   }
@@ -79,17 +93,17 @@ lf.oneIter <- function(adjMat,
   partitions <- lapply(1:np, function(i){
     origClust <- clustAlg(adjGraph, ...)$membership
 
-    singles <- which(table(origClust) == 1)
-
-    for(s in singles){
-      k <- which(origClust == s)
-      #Skip if we've added things together already
-      if(length(k) > 1){
-        next
-      }
-      #If no skip, add to the closest option
-      origClust[k] <- origClust[which.max(adjMat[k,-k])]
-    }
+    #singles <- which(table(origClust) == 1)
+    #
+    #for(s in singles){
+    #  k <- which(origClust == s)
+    #  #Skip if we've added things together already
+    #  if(length(k) > 1){
+    #    next
+    #  }
+    #  #If no skip, add to the closest option
+    #  origClust[k] <- origClust[which.max(adjMat[k,-k])]
+    #}
     return(as.factor(origClust))
   })
 

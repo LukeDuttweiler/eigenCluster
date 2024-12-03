@@ -4,7 +4,7 @@
 \alias{selfPaced}
 \title{Self-Paced Clustering Ensemble (SPCE) Algorithm}
 \usage{
-selfPaced(SList, K, threshold = 0.5)
+selfPaced(SList, K, threshold = 0.1)
 }
 \arguments{
 \item{SList}{A list of \verb{n x n} co-association matrices, each representing a base clustering.
@@ -12,7 +12,7 @@ Each matrix contains values between 0 and 1 indicating the co-occurrence likelih
 
 \item{K}{An integer specifying the number of clusters to form.}
 
-\item{threshold}{A numeric hyperparameter value (default = 0.5) controlling the sparsity of the output. Larger values enforce stricter sparsity.}
+\item{threshold}{A numeric hyperparameter value (default = 0.1) controlling sparsity internal to the algorithm. We have noticed issues with algorithmic convergence when this value is set too high. If the algorithm is taking super long, try lowering the threshold.}
 }
 \value{
 A vector of cluster assignments for each sample, with length equal to the number of rows (samples) in the input matrices.
