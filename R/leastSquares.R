@@ -1,4 +1,5 @@
 #Least Squares clustering
+#'@export
 leastSquares <- function(SList){
   #Make co-association matrix
   S <- Reduce('+', SList)/length(SList)
